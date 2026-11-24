@@ -85,7 +85,8 @@ def extractive_answer(question: str, hits: list[tuple[Chunk, float]], retriever:
     candidates = []  # (score, chunk_id, sentence)
     q = retriever.vectorizer.transform([question])
     for chunk, _ in hits:
-        sentences = split_sentences(chunk.text)
+        # Skip heading fragments such as "Cybersecurity risk." or "SECTION 2. FINANCIAL RESULTS".
+        sentences = [s for s in split_sentences(chunk.text) if len(s.split()) >= 5 and not s.isupper()]
         if not sentences:
             continue
         sims = (retriever.vectorizer.transform(sentences) @ q.T).toarray().ravel()
