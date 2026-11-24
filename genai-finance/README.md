@@ -14,6 +14,7 @@ pip install -r requirements.txt
 python -m genai_finance.rag "What was total revenue in fiscal 2024?"
 python -m genai_finance.evaluate
 python -m genai_finance.redteam
+python -m genai_finance.compare_retrievers   # TF-IDF vs BM25, retrieval only
 ```
 
 ## Use an LLM instead of extractive answers
@@ -40,4 +41,5 @@ Never commit your key. The request code retries on rate limits (HTTP 429). The r
 - 25 questions on one short document is a small test. Treat the numbers as a demonstration of the method, not a benchmark.
 - TF-IDF matches words, not meaning. Swap in an embedding model for real documents.
 - Guardrails here use pattern matching. `redteam.py` lists attacks it misses (obfuscation, other languages, spelled-out numbers).
+
 
