@@ -17,3 +17,6 @@ python code/trend_following_backtest.py
 
 Price data comes from Yahoo Finance via `yfinance`, so results change as new data arrives.
 Past performance does not guarantee future results.
+
+## GenAI for finance
+RAG over financial reports, evaluation and guardrails (runs offline): see [genai-finance/](genai-finance/).
