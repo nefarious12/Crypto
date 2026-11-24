@@ -37,15 +37,17 @@ def load_eval_set() -> list[dict]:
     return json.loads((DATA_DIR / "eval_set.json").read_text(encoding="utf-8"))
 
 
-def evaluate(max_words=120, overlap=20, top_k=3, min_score=0.15, verbose=False) -> dict:
+def evaluate(max_words=120, overlap=20, top_k=3, min_score=0.15, verbose=False, use_llm=False) -> dict:
     retriever = Retriever(build_chunks([DATA_DIR / "meridian_fy2024.txt"], max_words, overlap))
     items = load_eval_set()
     answerable = [q for q in items if q["answerable"]]
     unanswerable = [q for q in items if not q["answerable"]]
     hit = correct = false_abstain = abstain_ok = grounded = answered = 0
     failures = []
+    answers_log = []
     for q in items:
-        r = answer(q["question"], retriever, top_k=top_k, min_score=min_score, use_llm=False)
+        r = answer(q["question"], retriever, top_k=top_k, min_score=min_score, use_llm=use_llm)
+        answers_log.append({"id": q["id"], "question": q["question"], "answer": r["answer"], "abstained": r["abstained"]})
         ctx = norm(" ".join(r["contexts"]))
         if q["answerable"]:
             facts = [norm(e) for e in q["expected"]]
@@ -75,6 +77,7 @@ def evaluate(max_words=120, overlap=20, top_k=3, min_score=0.15, verbose=False) 
     }
     if verbose:
         metrics["failures"] = failures
+        metrics["answers"] = answers_log
     return metrics
 
 
@@ -129,7 +132,36 @@ def fmt(rows: list[dict]) -> str:
     return "\n".join(lines)
 
 
+def compare_llm() -> None:
+    """Extractive vs. LLM on the default config. Needs OPENAI_API_KEY (+ OPENAI_BASE_URL, LLM_MODEL).
+
+    Makes one API call per answerable question that passes the retrieval threshold (about 25 calls)."""
+    import os
+
+    if not os.environ.get("OPENAI_API_KEY"):
+        raise SystemExit("Set OPENAI_API_KEY first (see README).")
+    base = evaluate(verbose=True)
+    llm = evaluate(verbose=True, use_llm=True)
+    keys = ["retrieval_hit", "answer_correct", "false_abstain", "abstain_correct", "grounded"]
+    print(f"Model: {os.environ.get('LLM_MODEL', 'gpt-4o-mini')}  (120-word chunks, top_k=3, min_score=0.15)\n")
+    print(f"{'metric':<16}{'extractive':>12}{'LLM':>8}")
+    for k in keys:
+        print(f"{k:<16}{base[k]:>12.0%}{llm[k]:>8.0%}")
+    print("\nLLM failures:")
+    for f in llm["failures"]:
+        print(" ", f)
+    (ROOT / "results").mkdir(exist_ok=True)
+    out = {"model": os.environ.get("LLM_MODEL", "gpt-4o-mini"), "extractive": {k: base[k] for k in keys}, "llm": {k: llm[k] for k in keys}, "llm_answers": llm["answers"]}
+    (ROOT / "results" / "eval_llm.json").write_text(json.dumps(out, indent=2), encoding="utf-8")
+    print("\nSaved results/eval_llm.json")
+
+
 if __name__ == "__main__":
+    import sys
+
+    if "--llm" in sys.argv:
+        compare_llm()
+        raise SystemExit(0)
     rows = sweep()
     print(fmt(rows))
     save_outputs(rows)

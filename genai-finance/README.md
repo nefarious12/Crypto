@@ -1,4 +1,4 @@
-# GenAI for Finance: RAG, evaluation and guardrails
+﻿# GenAI for Finance: RAG, evaluation and guardrails
 
 Three connected projects on a synthetic annual report. Everything runs offline with no API key. Educational only, not investment advice.
 
@@ -17,7 +17,21 @@ python -m genai_finance.redteam
 ```
 
 ## Use an LLM instead of extractive answers
-Set `OPENAI_API_KEY` (and optionally `OPENAI_BASE_URL`, `LLM_MODEL`). The pipeline then generates answers from the retrieved chunks with any OpenAI-compatible API. This mode is not covered by the offline tests here.
+Set `OPENAI_API_KEY`, `OPENAI_BASE_URL` and `LLM_MODEL`. The pipeline then generates answers from the retrieved chunks with any OpenAI-compatible API. Example for Gemini (key from https://aistudio.google.com/apikey):
+
+```
+OPENAI_API_KEY=<your Gemini key>
+OPENAI_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai
+LLM_MODEL=<a current Gemini model name>
+```
+
+Then compare extractive and LLM answers on the 25-question set (about 20 API calls):
+
+```
+python -m genai_finance.evaluate --llm
+```
+
+Never commit your key. The request code retries on rate limits (HTTP 429). The retry and request path were tested against a local fake server, not yet against a real model.
 
 ## Data
 `data/meridian_fy2024.txt` is an invented company report. `data/poisoned_doc.txt` is a fake vendor newsletter with a hidden instruction, used to test indirect prompt injection. `data/eval_set.json` holds the 25 test questions (21 answerable, 4 not).
@@ -26,3 +40,4 @@ Set `OPENAI_API_KEY` (and optionally `OPENAI_BASE_URL`, `LLM_MODEL`). The pipeli
 - 25 questions on one short document is a small test. Treat the numbers as a demonstration of the method, not a benchmark.
 - TF-IDF matches words, not meaning. Swap in an embedding model for real documents.
 - Guardrails here use pattern matching. `redteam.py` lists attacks it misses (obfuscation, other languages, spelled-out numbers).
+
